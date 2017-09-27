@@ -26,14 +26,14 @@ function command(destinationhostname, password, functionCommand, publicKey, priv
       -- Wait for authentication adknowlegement
       senderID, authReply = tls.recieveSecureRednet(privateKey, cipher)
        if authReply == "authsuccess" then
-       logfile.writeLine("Got reply: AUTHSUCCESS\n")
+       logfile.writeLine("Got reply: AUTH_SUCCESS\n")
        logfile.writeLine("Requesting data from server\n")
        logfile.flush()
         -- Request auth from server
         tls.sendSecureRednet(destID, functionCommand, clientPublicKey, cipher)
         senderID, returnData = tls.recieveSecureRednet(privateKey, cipher)
         if returnData == "sendbiodata" then
-          logfile.writeLine("Got reply: SENDBIODATA\n")
+          logfile.writeLine("Got reply: SEND_BIO_DATA\n")
           logfile.writeLine("Sending data\n")
           logfile.flush()
           tls.sendSecureRednet(destID, logindata, clientPublicKey, cipher)
@@ -42,7 +42,7 @@ function command(destinationhostname, password, functionCommand, publicKey, priv
           logfile.flush()
           return returnData
         elseif returnData == "sendkeypaddata" then
-          logfile.writeLine("Got reply: SENDKEYPADDATA\n")
+          logfile.writeLine("Got reply: SEND_KEYPAD_DATA\n")
           logfile.writeLine("Sending data\n")
           logfile.flush()
           tls.sendSecureRednet(destID, logindata, clientPublicKey, cipher)
@@ -51,7 +51,7 @@ function command(destinationhostname, password, functionCommand, publicKey, priv
           logfile.flush()
           return returnData
         elseif returnData == "sendrfiddata" then
-          logfile.writeLine("Got reply")
+          logfile.writeLine("Got reply: SEND_RFID_DATA")
           logfile.writeLine("Sending data\n")
           logfile.flush()
           tls.sendSecureRednet(destID, logindata, clientPublicKey, cipher)
@@ -60,7 +60,7 @@ function command(destinationhostname, password, functionCommand, publicKey, priv
           logfile.flush()
           return returnData
         elseif returnData == "sendmagstripedata" then
-          logfile.writeLine("Got reply: SENDMAGSTRIPEDATA\n")
+          logfile.writeLine("Got reply: SEND_MAGSTRIPE_DATA\n")
           logfile.writeLine("Sending data\n")
           logfile.flush()
           tls.sendSecureRednet(destID, logindata, clientPublicKey, cipher)
