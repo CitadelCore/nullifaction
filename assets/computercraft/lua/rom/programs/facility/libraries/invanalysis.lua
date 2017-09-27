@@ -1,0 +1,64 @@
+-- InvAnalysis v1.0 by CitadelCore. All rights reserved.
+-- This copy is licensed for internal use only. You may not redistribute this program.
+-- Unauthorized use is prohibited.
+
+weapons = {"minecraft:iron_sword", "minecraft:wooden_sword", "minecraft:stone_sword", "minecraft:diamond_sword", "minecraft:golden_sword", "minecraft:tnt", "minecraft:tnt_minecart", "minecraft:shears", "minecraft:lava_bucket", "minecraft:bow", "minecraft:arrow", "minecraft:fire_charge"}
+drugs = {"minecraft:potion", "minecraft:splash_potion", "minecraft:fermented_spider_eye", "minecraft:speckled_melon", "minecraft:brewing_stand", "minecraft:nether_wart"}
+
+function getPlayerStatus(inventory)
+  invSize = inventory.getInventorySize()
+  if invSize > 0 then
+  return true
+  else
+  return false
+end
+
+function scanWeapons(inventory)
+  invSize = inventory.getInventorySize()
+  if invSize > 0 then
+   for i=1,invSize do
+     invSlot = inventory.getStackInSlot(i)
+     if invSlot ~= nil then
+     itemID = invSlot["id"]
+     for k,v in pairs(weapons) do
+     if v == itemID then
+       return "alert"
+     end
+   end
+     end
+   end
+  return "success"
+  else
+  return "noplayer"
+  end
+end
+
+function scanDrugs(inventory)
+  invSize = inventory.getInventorySize()
+  if invSize > 0 then
+   for i=1,invSize do
+     invSlot = inventory.getStackInSlot(i)
+     if invSlot ~= nil then
+     itemID = invSlot["id"]
+     for k,v in pairs(drugs) do
+     if v == itemID then
+       return "alert"
+     end
+   end
+     end
+   end
+  return "success"
+  else
+  return "noplayer"
+  end
+end
+
+function heruristicScan(inventory, contraband, action)
+if contraband == "weapons" then
+return scanWeapons(inventory)
+elseif contraband == "drugs" then
+return scanDrugs(inventory)
+else
+return "invalid"
+end
+end
