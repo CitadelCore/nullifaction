@@ -2,7 +2,7 @@
 -- Copyright 2016 TOWER Devs, all rights reserved.
 
 -- Load additional libraries
-os.loadAPI("/libraries/tls")
+os.loadAPI("/rom/programs/facility/libraries/tls")
 
 function command(destinationhostname, password, functionCommand, publicKey, privateKey, logindata, cipher, logfile)
      rednet.open("right")

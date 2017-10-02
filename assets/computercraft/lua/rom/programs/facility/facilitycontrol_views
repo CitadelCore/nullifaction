@@ -1,0 +1,94 @@
+os.loadAPI("/rom/programs/facility/libraries/facility_views"); -- Load the Application view object library
+
+lastError = nil;
+mon = nil;
+
+function constructViews(monitor)
+mon = monitor;
+monSizeW, monSizeH = monitor.getSize();
+
+  facilitycontrol_views.loginView = facility_views.newView("Authenticate", function(view, monitor)
+  monSizeW, monSizeH = monitor.getSize();
+  local text = "Please sign in.";
+  local text2 = "Scan administrative access card.";
+
+  monitor.setCursorPos((monSizeW - string.len(text)) / 2, monSizeH / 2);
+  monitor.write(text);
+
+  monitor.setCursorPos((monSizeW - string.len(text2)) / 2, (monSizeH / 2) + 2);
+  monitor.write(description);
+
+  os.sleep(2); -- simulate signin
+
+  facility_views.switchToView(facilitycontrol_views.mainMenuView, monitor);
+  end, mon);
+
+  facilitycontrol_views.loadingView = facility_views.newView("Loading", function(view, monitor)
+  monSizeW, monSizeH = monitor.getSize();
+  local text = "Please wait...";
+
+  monitor.setCursorPos((monSizeW - string.len(text)) / 2, monSizeH / 2);
+  monitor.write(text);
+  end, mon);
+
+  facilitycontrol_views.loadingView.onLoad = function(view, monitor)
+    monSizeW, monSizeH = monitor.getSize();
+    local text = "Communicating with authorization server.";
+
+    monitor.setCursorPos((monSizeW - string.len(text)) / 2, (monSizeH / 2) + 2);
+    monitor.write(text);
+
+    os.sleep(2); -- simulate communication
+
+    local text = "Please wait for system initialization.";
+
+    monitor.setCursorPos((monSizeW - string.len(text)) / 2, (monSizeH / 2) + 2);
+    monitor.write(text);
+
+    os.sleep(3);
+
+    facility_views.showMenu = true;
+    facility_views.switchToView(facilitycontrol_views.loginView, monitor);
+  end
+
+  facilitycontrol_views.errorView = facility_views.newView("Error", function(view, monitor)
+  monSizeW, monSizeH = monitor.getSize();
+  local text = "Oh shit, an error occurred!";
+  local description = facilitycontrol_views.lastError.source .. " " .. facilitycontrol_views.lastError.description;
+  local contact = "Please contact an administrator.";
+
+  monitor.setTextColor(colors.red);
+  monitor.setCursorPos((monSizeW - string.len(text)) / 2, monSizeH / 2);
+  monitor.write(text);
+
+  monitor.setCursorPos((monSizeW - string.len(description)) / 2, (monSizeH / 2) + 2);
+  monitor.write(description);
+
+  monitor.setCursorPos((monSizeW - string.len(contact)) / 2, (monSizeH / 2) + 8);
+  monitor.write(contact);
+
+  print("Fatal error thrown. Description: " .. facilitycontrol_views.lastError.source .. " " .. facilitycontrol_views.lastError.description);
+  error("Program is exiting because a fatal error occured! See above information and log files.")
+  end, mon);
+
+  facilitycontrol_views.controlView = facility_views.newView("Control", function(view) end, mon);
+  facilitycontrol_views.controlView.insertObject(facility_views.newScrollObject(0, 0, monSizeW, monSizeH));
+
+  facilitycontrol_views.systemsView = facility_views.newView("Systems", function(view) end, mon);
+
+  facilitycontrol_views.systemsView.drawButton("Control", function(view) facility_views.switchToView(facilitycontrol_views.controlView, view.monitor); end, colors.gray, 2, 4, 2);
+  facilitycontrol_views.systemsView.drawButton("Mining", facility_actions.throwUnimplemented, colors.gray, 2, 5, 2);
+  facilitycontrol_views.systemsView.drawButton("Defence", facility_actions.throwUnimplemented, colors.gray, 2, 6, 2);
+  facilitycontrol_views.systemsView.drawButton("Power", facility_actions.throwUnimplemented, colors.gray, 2, 7, 2);
+  facilitycontrol_views.systemsView.drawButton("Storage", facility_actions.throwUnimplemented, colors.gray, 2, 8, 2);
+  facilitycontrol_views.systemsView.drawButton("Processing", facility_actions.throwUnimplemented, colors.gray, 2, 9, 2);
+
+  facilitycontrol_views.mainMenuView = facility_views.newView("Main Menu", function(view, monitor)
+
+  end, mon);
+
+  facilitycontrol_views.mainMenuView.drawButton("Systems", function(view) facility_views.switchToView(facilitycontrol_views.systemsView, view.monitor); end, colors.gray, 2, 4, 2);
+  facilitycontrol_views.mainMenuView.drawButton("Control", facility_actions.throwUnimplemented, colors.gray, 2, 5, 2);
+  facilitycontrol_views.mainMenuView.drawButton("Settings", facility_actions.throwUnimplemented, colors.blue, 2, 6, 2);
+  facilitycontrol_views.mainMenuView.drawButton("Emergency", facility_actions.throwUnimplemented, colors.red, 2, 7, 2);
+end

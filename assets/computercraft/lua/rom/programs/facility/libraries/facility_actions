@@ -1,0 +1,8 @@
+os.loadAPI("/rom/programs/facility/facilitycontrol_views");
+os.loadAPI("/rom/programs/facility/libraries/facility_views");
+
+function throwUnimplemented(view)
+  local _, source = pcall(error, "", 2);
+  local err = facility_views.newError("An unimplemented method was called.", source);
+  err.throw();
+end

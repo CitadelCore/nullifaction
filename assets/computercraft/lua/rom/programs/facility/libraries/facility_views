@@ -1,0 +1,246 @@
+os.loadAPI("/rom/programs/facility/libraries/facility_actions");
+
+finishedRendering = false;
+currentView = nil;
+showMenu = false;
+
+-- This method is intended to be called by the application's main loop, in a parallel arrangement,
+-- if the application requires more than one callback methods to be excecuted.
+-- This spawns parallel instances for each pullEvent for monitor touch events,
+-- and handles monitor events in general.
+function callViewHooks()
+  if currentView ~= nil then
+    event, side, xPos, yPos = os.pullEvent("monitor_touch");
+    for k, object in pairs(currentView.objects) do
+      object.clicked(object, xPos, yPos);
+    end
+  end
+end
+
+-- This method switches the current view
+-- to the view specified. This basically blanks out the current view,
+-- draws some hardcoded controls such as authentication and help buttons, and the title,
+-- and then calls the render() delegate on the "view" object to actually render the view.
+function switchToView(view, monitor)
+  -- Avoid an infinite loop if you're trying to switch to the current view
+  if (currentView ~= nil) then
+    if (currentView.title == view.title) then return end
+  end
+
+  finishedRendering = false;
+  currentView = view;
+
+  monSizeW, monSizeH = monitor.getSize();
+  monitor.clear();
+  monitor.setBackgroundColor(colors.black);
+  monitor.setTextColor(colors.white);
+
+  monitor.setCursorPos(2, 1);
+  monitor.write("Facility Master Control");
+
+  monitor.setCursorPos((monSizeW - string.len(view.title)) / 2, 1);
+  monitor.write(view.title);
+
+  -- Add hardcoded buttons here
+  view.drawButton("Need help?", facility_actions.throwUnimplemented, colors.green, monSizeW - 10, 1, 2);
+  if (facility_views.showMenu == true) then
+    view.drawButton("Main Menu", function(view) switchToView(facilitycontrol_views.mainMenuView, view.monitor); end, colors.blue, monSizeW - 23, 1, 2);
+  end
+
+  -- Render all objects
+  for k, object in pairs(view.objects) do
+    object.callRender(view, object);
+  end
+
+  monitor.setCursorPos(0, 0);
+  monitor.setBackgroundColor(colors.black);
+
+  -- Call the render hook
+  view.render(view, monitor);
+
+  -- Call the onLoad hook, if exists
+  if (view.onLoad ~= nil) then
+    view.onLoad(view, monitor);
+  end
+
+  finishedRendering = true;
+end
+
+-- Creates a new button. Should only be used within
+-- the context of the view object, except in special cases.
+-- This does not render the button, that is done in the switchToView method.
+local function newButton(text, onclick, bgcolour, x, y, p)
+  local x1 = x - p;
+  local x2 = x + string.len(text) + p;
+  local y1 = y;
+  local y2 = y;
+
+  local button = newObject(x1, y1, x2, y2);
+
+  button.text = text;
+  button.onclick = onclick;
+
+  button.bgcolour = bgcolour;
+  -- add a padding for the button background. (horizontal only)
+  if (p == nil) then p = 1 end
+  button.padding = p;
+
+  button.render = function(view, object)
+    local monitor = view.monitor;
+    monitor.setCursorPos(object.x1, object.y1);
+    monitor.setBackgroundColor(object.bgcolour);
+    --print("writing button with text \"" .. button.text .. "\" at: " .. button.x1 .. ", " .. button.y1);
+    monitor.write(string.rep(" ", string.len(object.text) + (object.padding * 2)));
+    monitor.setTextColor(colors.white);
+    monitor.setCursorPos(object.x1 + object.padding, object.y1);
+    monitor.write(object.text);
+  end
+
+  return button;
+end
+
+-- Helper method for creating a new "view" object.
+function newView(title, renderFunc, mon)
+  local view = {};
+  view.title = title;
+  view.render = renderFunc;
+  view.objects = {};
+  view.redraw = function()
+    for k, object in pairs(view.objects) do
+      object.redraw(view, object);
+    end
+  end
+
+  view.insertObject = function(object)
+    table.insert(view.objects, object);
+  end
+  view.drawButton = function(text, onclick, bgcolour, x, y, p)
+    local button = newButton(text, onclick, bgcolour, x, y, p);
+    table.insert(view.objects, button);
+  end
+  view.onLoad = nil;
+  view.tick = nil;
+  view.monitor = mon;
+
+  return view;
+end
+
+-- Creates a new base "object" to be shown on a monitor.
+function newObject(x1, y1, x2, y2)
+  local object = {};
+  object.x1 = x1;
+  object.y1 = y1;
+  object.x2 = x2;
+  object.y2 = y2;
+  object.width = x2 - x1;
+  object.height = y2 - y1;
+  object.children = {};
+
+  object.addSubobject = function(subobject)
+    table.insert(object.children, subobject);
+  end
+
+  object.removeSubobject = function(subobject)
+    table.remove(object.children, subobject);
+  end
+
+  object.clicked = function(object, x, y)
+    if (xPos >= object.x1 and xPos <= object.x2 and yPos >= object.y1 and yPos <= object.y2 and finishedRendering == true) then
+      --print("click event was within bounds: " .. object.x1 .. ", " .. object.x2 .. ", " .. object.y1 .. ", " .. object.y2);
+      object.onclick(currentView);
+    end
+  end
+
+  object.onclick = function(view) end
+
+  object.render = function(view, object) end
+  object.renderSubobjects = function(view, object)
+    for k, subobject in pairs(object.children) do
+      subobject.callRender(view, object);
+    end
+  end
+
+  object.callRender = function(view, object)
+    object.render(view, object);
+
+    -- Render subobjects
+    object.renderSubobjects(view, object);
+  end
+
+  object.redraw = function(view, object)
+    -- Blank out the existing area
+    local oldTerm = term.redirect(monitor);
+    paintutils.drawFilledBox(object.x1, object.y1, object.x2, object.y2, view.monitor.getBackgroundColor());
+    term.redirect(oldTerm);
+
+    -- Re-render
+    object.callRender(view, object);
+  end
+
+  return object;
+end
+
+function newScrollObject(xpos, ypos, width, height)
+  local scroller = newObject(xpos, ypos, width, height);
+  scroller.render = function(view, object)
+    local monitor = view.monitor;
+    monSizeW, monSizeH = monitor.getSize();
+
+    local combinedWidths = 0;
+    local combinedHeights = 0;
+    local largestWidth = 0;
+
+    for k, subobject in pairs(object.children) do
+      if (subobject.width > largestWidth) then largestWidth = subobject.width; end
+
+      combinedWidths = combinedWidths + subobject.width + 2; -- Add 2 for wrapping
+      combinedHeights = combinedHeights + subobject.height;
+    end
+
+    --object.width = combinedWidths + 2;
+    --object.height = combinedHeights + 2;
+    --object.x2 = object.x1 + object.width;
+    --object.y2 = object.y1 + object.height;
+
+    if (monSizeW > combinedWidths) then
+      object.horizontalScrolling = true;
+    end
+
+    if (monSizeH > combinedHeights) then
+      object.verticalScrolling = true;
+    end
+
+    local monitor = view.monitor;
+    monitor.setTextColor(colors.black);
+    monitor.setBackgroundColor(colors.white);
+    monitor.setCursorPos(object.x1, object.y2);
+    monitor.write("<");
+    monitor.setCursorPos(object.x2, object.y2);
+    monitor.write(">");
+
+    monitor.setBackgroundColor(colors.black);
+
+    local oldTerm = term.redirect(monitor);
+    paintutils.drawFilledBox(object.x2 + 1, object.y1 + 1, object.x2 - 1, object.y2 + 1, colors.white);
+    term.redirect(oldTerm);
+  end
+
+  scroller.horizontalScrolling = false;
+  scroller.verticalScrolling = false;
+  scroller.xoffset = 0;
+  scroller.yoffset = 0;
+
+  return scroller;
+end
+
+function newError(description, source, line)
+local err = {};
+err.description = description;
+err.source = source;
+err.throw = function(self)
+os.queueEvent("view_fatalError", err);
+end
+
+return err;
+
+end

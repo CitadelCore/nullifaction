@@ -1,0 +1,84 @@
+-- Load libraries
+os.loadAPI("/rom/programs/facility/libraries/tls"); -- Load Crypto library
+os.loadAPI("/rom/programs/facility/libraries/fusion"); -- Load Fusion Server communication library
+os.loadAPI("/rom/programs/facility/libraries/auth"); -- Load Fusion Auth communication library
+os.loadAPI("/rom/programs/facility/libraries/invanalysis"); -- Load InvAnalysis
+os.loadAPI("/rom/programs/facility/libraries/facility_views"); -- Load the Application view object library
+os.loadAPI("/rom/programs/facility/libraries/facility_actions");
+os.loadAPI("/rom/programs/facility/facilitycontrol_views");
+
+local active = true;
+
+local monitor = peripheral.wrap("monitor_0");
+local gpu = peripheral.wrap("GPU_0");
+local magstripe = peripheral.wrap("mag card reader_0");
+local diskdrive = peripheral.wrap("drive_0");
+local printer = peripheral.wrap("printer_0");
+local modem = peripheral.wrap("back");
+
+function plotFilledRect(x, y, nextx, nexty)
+gpu.filledRectangle(x, y, (nextx-x)+1, (nexty-y)+1);
+end
+
+monitor.clear();
+monitor.setTextScale(0.5);
+
+modem.closeAll();
+term.clear();
+print("Please wait, resetting system...");
+
+if (term.isColor() == false or monitor.isColor() == false) then
+  error("Fatal error: Terminal or monitor does not support colour! Ensure both are Advanced.");
+end
+
+facilitycontrol_views.constructViews(monitor);
+facility_views.switchToView(facilitycontrol_views.loadingView, monitor);
+
+-- Set up GPU
+gpuW, gpuH = gpu.getSize(0);
+
+-- Corrections for larger screen
+resW = gpuW * 2;
+resH = gpuH * 2;
+
+gpu.setColor(0, 0, 0);
+gpu.fill();
+
+gpu.setColor(22, 18, 13); -- set colour
+
+plotFilledRect(0, 0, 0.5, resH); -- left bar
+plotFilledRect(resW - 1, 0, resW, resH); -- right bar
+plotFilledRect(1, 0, resW, 0.5); -- top bar
+plotFilledRect(1, resH - 1, resW - 1, resH); -- bottom bar
+
+--gpu.setColor(155, 132, 61); -- set colour
+
+--plotFilledRect(1, 1, 1.5, resH - 2); -- left bar
+--plotFilledRect(resW - 1, 1, resW - 2, resH - 2); -- right bar
+--plotFilledRect(1, 0, resW, 0.5); -- top bar
+--plotFilledRect(1, resH - 1, resW - 1, resH); -- bottom bar
+
+local gpuText = "Please wait, GPU initializing.";
+gpu.setColor(255, 255, 255);
+gpu.drawText(gpuText, (resW / 2) - string.len(gpuText), resH / 2);
+
+print("Initialized application. System ready.");
+print("Please see monitor for more information.");
+
+-- Application main loop here.
+while active == true do
+  local callbacks = {};
+  table.insert(callbacks, facility_views.callViewHooks);
+  table.insert(callbacks, function()
+  local event, err = os.pullEvent("view_fatalError");
+  -- A fatal error occured!
+  facilitycontrol_views.lastError = err;
+  active = false;
+  end)
+  -- Additional event handlers should be added here.
+  parallel.waitForAny(unpack(callbacks));
+end
+
+if (facilitycontrol_views.lastError ~= nil) then
+  facility_views.switchToView(facilitycontrol_views.errorView, monitor);
+end

@@ -2,7 +2,7 @@
 -- Copyright 2016 TOWER Devs, all rights reserved.
 
 -- Load additional libraries
-os.loadAPI("/libraries/tls")
+os.loadAPI("/rom/programs/facility/libraries/tls")
 
 function command(listenport, transmitport, password, functionCommand, publicKey, privateKey, cipher, logfile, modem)
   -- Close all connections, for integrity
